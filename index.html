@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KPIs Julia Brito (Interativo)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #FFFFFF; /* Fundo branco */
+            color: #19234f; /* Cor do texto principal */
+        }
+        .kpi-card {
+            background-color: #19234f; /* Cor do card */
+            border: 1px solid #66c1b0; /* Cor da borda */
+            border-radius: 1rem;
+            padding: 1.5rem;
+            transition: all 0.3s ease-in-out;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            cursor: pointer;
+        }
+        .kpi-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2), 0 4px 6px -2px rgba(0, 0, 0, 0.1);
+        }
+        .kpi-title {
+            font-weight: 700;
+            color: #FFFFFF;
+            font-size: 1rem;
+            line-height: 1.5rem;
+            text-transform: uppercase;
+        }
+        .kpi-value {
+            font-weight: 900;
+            color: #66c1b0;
+            font-size: 2rem;
+            line-height: 2.25rem;
+        }
+        .kpi-weight {
+            position: absolute;
+            top: 1rem;
+            right: 1.5rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #FFFFFF;
+            background-color: #19234f;
+            padding: 0.125rem 0.5rem;
+            border-radius: 9999px;
+        }
+        .section-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #19234f;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #66c1b0;
+        }
+        .lighthouse-beam {
+            position: absolute;
+            top: 25px;
+            left: 50%;
+            width: 200%;
+            height: 100px;
+            background: linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,0.15), rgba(255,255,255,0));
+            transform-origin: 50% 0;
+            transform: translateX(-50%) perspective(200px) rotateY(0deg) rotateX(20deg);
+            animation: beam-sweep 8s linear infinite;
+        }
+        @keyframes beam-sweep {
+            0% { transform: translateX(-50%) perspective(200px) rotateY(-45deg) rotateX(20deg); }
+            50% { transform: translateX(-50%) perspective(200px) rotateY(45deg) rotateX(20deg); }
+            100% { transform: translateX(-50%) perspective(200px) rotateY(-45deg) rotateX(20deg); }
+        }
+        /* Estilos do Modal */
+        .modal-overlay {
+            transition: opacity 0.3s ease;
+        }
+        #quoteModal {
+            transition: opacity 0.5s ease;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mx-auto p-4 md:p-8">
+        
+        <header class="text-center mb-8 md:mb-12">
+            <div class="mb-8">
+                <!-- LOGO CORRIGIDA: Substitua a URL abaixo pela URL pública da sua imagem -->
+                <img src="https://storage.googleapis.com/gcs-public-data-bucket-for-gen-app-builder-demo/elysiun7_logo_monocromatica_azul.jpg" alt="Logo Elysiun7" class="mx-auto h-20">
+            </div>
+            <h1 class="text-4xl md:text-5xl font-bold" style="color:#66c1b0;">Avaliação de Liderança e Clima</h1>
+            <p class="text-xl mt-2" style="color:#19234f;">Painel de Feedback e Gestão</p>
+        </header>
+        <!-- Formulário e Dashboard Integrados -->
+        <div id="feedback-section" class="mt-8">
+            <h2 class="section-title text-center" style="color:#19234f; border-color: #66c1b0;">Feedback da Equipe</h2>
+            <div id="feedback-form" class="max-w-xl mx-auto space-y-6">
+                <div class="p-6 rounded-xl shadow-lg border" style="background-color: #19234f; border-color: #66c1b0;">
+                    <p class="font-semibold mb-4 text-sm" style="color:#FFFFFF;">
+                        Responda as perguntas, usando a escala de 1 a 5, onde:<br>
+                        <span class="font-normal text-xs" style="color:#FFFFFF;">
+                            1 = Discordo totalmente / 2 = Discordo / 3 = Neutro / 4 = Concordo / 5 = Concordo totalmente
+                        </span>
+                    </p>
+                    <div id="questions-container" class="space-y-4"></div>
+                    <h3 class="text-xl font-bold mt-8 mb-4" style="color:#66c1b0;">Respostas em texto:</h3>
+                    <div class="space-y-4">
+                        <div class="p-4 rounded-lg shadow-inner" style="background-color:#19234f">
+                            <label for="improvement" class="block font-medium mb-2" style="color:#66c1b0;">O que a liderança poderia melhorar?</label>
+                            <textarea id="improvement" rows="3" class="w-full p-3 text-white border rounded-md focus:outline-none focus:ring-2 resize-none" style="background-color:#19234f; border-color: #66c1b0; focus-ring-color: #66c1b0; color:#FFFFFF;" placeholder="Digite sua resposta aqui..."></textarea>
+                        </div>
+                        <div class="p-4 rounded-lg shadow-inner" style="background-color:#19234f">
+                            <label for="good_points" class="block font-medium mb-2" style="color:#66c1b0;">O que já funciona bem e deve ser mantido?</label>
+                            <textarea id="good_points" rows="3" class="w-full p-3 text-white border rounded-md focus:outline-none focus:ring-2 resize-none" style="background-color:#19234f; border-color: #66c1b0; focus-ring-color: #66c1b0; color:#FFFFFF;" placeholder="Digite sua resposta aqui..."></textarea>
+                        </div>
+                    </div>
+                    <button id="submit-btn" class="w-full text-white font-bold py-3 px-6 mt-6 rounded-xl text-lg hover:opacity-80 transition duration-300 transform active:scale-95 shadow-lg" style="background-color:#66c1b0;">Enviar Respostas</button>
+                </div>
+                <div id="thank-you-message" class="text-center font-bold hidden">
+                    <h2 class="text-2xl mt-8" style="color:#66c1b0;">Obrigado pela sua contribuição!</h2>
+                    <p class="mt-2" style="color:#19234f;">Suas respostas foram enviadas com sucesso.</p>
+                    <button id="new-response-btn" class="mt-4 font-semibold py-2 px-6 rounded-lg transition-all duration-300 border hover:opacity-80" style="color:#19234f; border-color: #66c1b0; background-color: #FFFFFF;">
+                        Enviar Nova Resposta
+                    </button>
+                </div>
+            </div>
+            <div id="dashboard-access" class="text-center mt-10">
+                <button id="access-dashboard-btn" class="font-semibold py-2 px-6 rounded-lg transition-all duration-300 border hover:opacity-80" style="color:#19234f; border-color: #66c1b0; background-color: #FFFFFF;">
+                    Acessar Dashboard
+                </button>
+            </div>
+        </div>
+        
+        <div id="dashboard-section" class="max-w-4xl mx-auto space-y-8 hidden">
+            <div id="login-form" class="max-w-sm mx-auto p-6 rounded-xl shadow-lg border" style="background-color:#19234f; border-color: #66c1b0;">
+                <h3 class="text-xl font-semibold mb-4" style="color:#FFFFFF;">Login de Acesso</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label for="dashboard-username" class="block font-medium mb-2" style="color:#66c1b0;">Usuário</label>
+                        <input type="text" id="dashboard-username" class="w-full p-3 text-white border rounded-md focus:outline-none focus:ring-2" style="background-color:#19234f; border-color: #66c1b0; focus-ring-color: #66c1b0; color:#FFFFFF;" placeholder="Digite o usuário">
+                    </div>
+                    <div>
+                        <label for="dashboard-password" class="block font-medium mb-2" style="color:#66c1b0;">Senha</label>
+                        <input type="password" id="dashboard-password" class="w-full p-3 text-white border rounded-md focus:outline-none focus:ring-2" style="background-color:#19234f; border-color: #66c1b0; focus-ring-color: #66c1b0; color:#FFFFFF;" placeholder="Digite a senha">
+                    </div>
+                    <p id="login-error" class="text-red-500 text-sm font-bold text-center hidden">Usuário ou senha inválidos.</p>
+                    <button id="login-btn" class="w-full text-white font-bold py-3 px-6 rounded-xl text-lg hover:opacity-80 transition duration-300" style="background-color:#66c1b0;">Acessar</button>
+                </div>
+            </div>
+            <div id="results-dashboard" class="space-y-8 hidden">
+                <div class="flex justify-between items-center mb-6">
+                  <h2 class="text-2xl md:text-3xl font-bold" style="color:#66c1b0;">Dashboard de Resultados</h2>
+                  <div class="flex items-center space-x-4">
+                    <span id="session-id-display" class="font-mono px-3 py-1 rounded-full" style="background-color:#19234f; color:#66c1b0;"></span>
+                    <button id="logout-btn" class="font-semibold py-1 px-3 rounded-lg transition-all duration-300 border hover:opacity-80" style="color:#ff0000; border-color: #ff0000; background-color:#FFFFFF;">
+                        Sair
+                    </button>
+                  </div>
+                </div>
+                <div id="loading-results" class="text-center py-20" style="color:#19234f;">
+                  <p class="animate-pulse">Carregando resultados...</p>
+                </div>
+                <div id="loaded-content" class="space-y-8 hidden">
+                    <!-- KPIs Diretos e Indiretos -->
+                    <div id="kpi-section" class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <div class="lg:col-span-2">
+                            <h2 class="section-title" style="color:#19234f; border-color: #66c1b0;">KPIs Diretos - 70%</h2>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div class="kpi-card bg-gray-800/50 backdrop-blur-sm md:col-span-2" data-kpi="vendas" style="background-color:#19234f; border-color:#66c1b0;">
+                                    <div class="kpi-weight" style="background-color:#19234f; color: #FFFFFF;">Peso 45%</div>
+                                    <div class="flex items-center justify-between">
+                                        <div>
+                                            <p class="kpi-title" style="color:#FFFFFF;">Vendas de Planos</p>
+                                            <p class="kpi-value mt-1" style="color:#66c1b0;">+18%</p>
+                                        </div>
+                                        <div class="w-1/2 h-24"><svg viewBox="0 0 100 50" class="w-full h-full" preserveAspectRatio="none"><path d="M 0 45 Q 15 30, 25 35 T 50 20 T 75 15 T 100 5" stroke="#66c1b0" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                                    </div>
+                                </div>
+                                <div class="kpi-card bg-gray-800/50 backdrop-blur-sm" data-kpi="inadimplencia" style="background-color:#19234f; border-color:#66c1b0;">
+                                    <div class="kpi-weight" style="background-color:#19234f; color: #FFFFFF;">Peso 35%</div>
+                                    <p class="kpi-title" style="color:#FFFFFF;">Inadimplencia</p>
+                                    <p class="kpi-value mt-1" style="color:#66c1b0;">-7.5%</p>
+                                    <div class="flex-grow flex items-center justify-center mt-4"><svg width="64" height="64" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="color:#66c1b0;" class="h-16 w-16"><path d="M12 5V19M12 19L7 14M12 19L17 14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                                </div>
+                                <div class="kpi-card bg-gray-800/50 backdrop-blur-sm" data-kpi="servicos" style="background-color:#19234f; border-color:#66c1b0;">
+                                    <div class="kpi-weight" style="background-color:#19234f; color: #FFFFFF;">Peso 15%</div>
+                                    <p class="kpi-title" style="color:#FFFFFF;">Serviços (Satisfação)</p>
+                                    <p class="kpi-value mt-1" style="color:#66c1b0;">96%</p>
+                                    <div class="flex-grow flex items-center justify-center mt-4 space-x-1"><svg width="64" height="64" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="h-12 w-12" style="color:#66c1b0;"><path d="M20 6L9 17L4 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><svg width="64" height="64" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" style="color:#66c1b0;"><path d="M20 6L9 17L4 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                                </div>
+                                <div class="kpi-card bg-gray-800/50 backdrop-blur-sm md:col-span-2" data-kpi="delta" style="background-color:#19234f; border-color:#66c1b0;">
+                                    <div class="kpi-weight" style="background-color:#19234f; color: #FFFFFF;">Peso 5%</div>
+                                    <div class="flex items-center justify-between">
+                                        <div>
+                                            <p class="kpi-title" style="color:#FFFFFF;">Delta % Planos Novos</p>
+                                            <p class="kpi-value mt-1" style="color:#66c1b0;">+25%</p>
+                                        </div>
+                                        <div class="w-1/3 h-24 relative flex items-center justify-center"><div class="absolute w-16 h-16 rounded-full border-2 animate-ping" style="border-color:#66c1b0;"></div><svg width="64" height="64" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 z-10" style="color:#66c1b0;"><path d="M12 3C16.9706 3 21 7.02944 21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3Z" stroke="currentColor" stroke-width="2"/><path d="M12 8V16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M8 12H16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></div>
+                                    </div>
+                                </div>
+                                <div class="md:col-span-2 mt-4 text-center">
+                                    <button id="saibaMaisBtn" class="font-semibold py-2 px-4 rounded-lg transition-all duration-300 border hover:opacity-80" style="color:#19234f; border-color: #66c1b0; background-color:#FFFFFF;">
+                                        Clique aqui e saiba mais
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="lg:col-span-1">
+                            <h2 class="section-title" style="color:#19234f; border-color: #66c1b0;">KPIs Indiretos - 30%</h2>
+                            <div class="flex flex-col gap-6">
+                                <div class="relative flex flex-col items-center justify-center p-6 rounded-xl h-48 overflow-hidden" style="background-color:#19234f; border-color:#66c1b0;"><div class="lighthouse-beam"></div><svg viewBox="0 0 50 100" class="h-24 z-10" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 25 L 30 25 L 35 100 L 15 100 Z" fill="#19234f"/><path d="M15 25 L 35 25 L 40 35 L 10 35 Z" fill="#66c1b0"/><rect x="18" y="15" width="14" height="10" fill="#19234f"/><path d="M25 15 L 30 5 L 20 5 Z" fill="#19234f"/></svg><p class="mt-2 font-bold text-lg" style="color:#FFFFFF;">LIDERANÇA</p></div>
+                                <div class="kpi-card border" data-kpi="engajamento" style="background-color:#19234f; border-color:#66c1b0;"><div class="kpi-weight" style="background-color:#19234f; color:#FFFFFF;">Peso 50%</div><p class="kpi-title" style="color:#FFFFFF;">Engajamento e Condução</p><div class="flex-grow flex items-center justify-between mt-2"><p class="text-2xl font-bold" style="color:#66c1b0;">Excelente</p><svg width="64" height="64" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="h-12 w-12" style="color:#66c1b0;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div></div>
+                                <div class="kpi-card border" data-kpi="feedback" style="background-color:#19234f; border-color:#66c1b0;"><div class="kpi-weight" style="background-color:#19234f; color:#FFFFFF;">Peso 35%</div><p class="kpi-title" style="color:#FFFFFF;">Feedback da Equipe</p><div class="flex-grow flex items-center justify-between mt-2"><p class="text-2xl font-bold" style="color:#66c1b0;">4.7 / 5.0</p><svg viewBox="0 0 100 50" class="w-1/2 h-12"><path d="M10 40 A 40 40 0 0 1 90 40" stroke="#19234f" fill="none" stroke-width="8" stroke-linecap="round"/><path d="M10 40 A 40 40 0 0 1 83 14" stroke="#66c1b0" fill="none" stroke-width="8" stroke-linecap="round"/></svg></div></div>
+                                <div class="kpi-card border" data-kpi="percepcao" style="background-color:#19234f; border-color:#66c1b0;"><div class="kpi-weight" style="background-color:#19234f; color:#FFFFFF;">Peso 15%</div><p class="kpi-title" style="color:#FFFFFF;">Percepção do Gestor</p><div class="flex-grow flex items-center justify-between mt-2"><p class="text-2xl font-bold" style="color:#66c1b0;">Destaque</p><svg width="64" height="64" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="h-14 w-14" style="color:#66c1b0;"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" fill="#66c1b0" stroke="#66c1b0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div></div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Fim dos KPIs Diretos e Indiretos -->
+                    
+                    <hr class="border-gray-700 my-8" style="border-color: #19234f;">
+                    <!-- Médias das Notas -->
+                    <div class="p-6 rounded-xl shadow-lg border" style="background-color:#19234f; border-color: #66c1b0;">
+                        <h3 class="text-xl font-semibold mb-4" style="color:#FFFFFF;">Média das Notas (1-5)</h3>
+                        <div id="averages-container" class="space-y-4" style="color:#FFFFFF;"></div>
+                    </div>
+                    <!-- Nuvem de Palavras -->
+                    <div class="p-6 rounded-xl shadow-lg border" style="background-color:#19234f; border-color: #66c1b0;">
+                        <h3 class="text-xl font-semibold mb-4" style="color:#FFFFFF;">Nuvem de Palavras (Ênfase)</h3>
+                        <div class="grid md:grid-cols-2 gap-6">
+                            <div>
+                                <h4 class="text-lg font-bold mb-2" style="color:#66c1b0;">O que a liderança poderia melhorar?</h4>
+                                <div id="improvement-word-cloud" class="flex flex-wrap justify-center items-center gap-2 min-h-24 p-4 rounded-lg" style="background-color:#FFFFFF;"></div>
+                            </div>
+                            <div>
+                                <h4 class="text-lg font-bold mb-2" style="color:#66c1b0;">O que já funciona bem e deve ser mantido?</h4>
+                                <div id="good-points-word-cloud" class="flex flex-wrap justify-center items-center gap-2 min-h-24 p-4 rounded-lg" style="background-color:#FFFFFF;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Modal de Detalhes dos KPIs -->
+    <div id="kpiModal" class="modal-overlay fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50 hidden opacity-0">
+        <div class="rounded-xl shadow-2xl p-6 md:p-8 w-full max-w-lg text-white border transform scale-95 transition-transform duration-300" style="background-color:#19234f; border-color: #66c1b0;">
+            <div class="flex justify-between items-center mb-4"><h3 id="modalTitle" class="text-2xl font-bold" style="color:#FFFFFF;"></h3><button id="closeModal" class="text-3xl leading-none" style="color:#66c1b0; hover:text-white;">&times;</button></div>
+            <div id="modalContent" class="space-y-4 text-lg leading-relaxed" style="color:#FFFFFF;"></div>
+        </div>
+    </div>
+    <!-- Modal da Frase -->
+    <div id="quoteModal" class="fixed inset-0 flex flex-col items-center justify-center p-4 z-50 hidden opacity-0" style="background-color:#FFFFFF; background-opacity: 0.95;">
+        <button id="closeQuoteModal" class="absolute top-8 right-8 text-5xl leading-none" style="color:#19234f; hover:text-black;">&times;</button>
+        <div class="relative text-center max-w-4xl">
+            <p class="text-4xl md:text-6xl font-bold leading-tight" style="color:#19234f; text-shadow: 0 0 15px rgba(0,0,0,0.3);">
+                "Se for o melhor da mesa em que está, você está na mesa errada"
+            </p>
+            <a href="https://achilesrodrigues.com.br/se-for-o-melhor-na-mesa-que-esta-voce-esta-na-mesa-errada/" target="_blank" rel="noopener noreferrer" class="absolute bottom-[-50px] right-0 text-sm hover:underline" style="color:#66c1b0;">
+                Fonte: achilesrodrigues.com.br
+            </a>
+        </div>
+    </div>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, getDocs, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        // Variáveis globais de ambiente (definidas no ambiente de execução)
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        let db, auth, feedbackCollection;
+        const uiElements = {
+            kpiSection: document.getElementById('kpi-section'),
+            feedbackSection: document.getElementById('feedback-section'),
+            questionsContainer: document.getElementById('questions-container'),
+            improvementText: document.getElementById('improvement'),
+            goodPointsText: document.getElementById('good_points'),
+            submitBtn: document.getElementById('submit-btn'),
+            thankYouMessage: document.getElementById('thank-you-message'),
+            accessDashboardBtn: document.getElementById('access-dashboard-btn'),
+            dashboardSection: document.getElementById('dashboard-section'),
+            loginForm: document.getElementById('login-form'),
+            dashboardUsername: document.getElementById('dashboard-username'),
+            dashboardPassword: document.getElementById('dashboard-password'),
+            loginBtn: document.getElementById('login-btn'),
+            loginError: document.getElementById('login-error'),
+            resultsDashboard: document.getElementById('results-dashboard'),
+            loadingResults: document.getElementById('loading-results'),
+            loadedContent: document.getElementById('loaded-content'),
+            averagesContainer: document.getElementById('averages-container'),
+            improvementWordCloud: document.getElementById('improvement-word-cloud'),
+            goodPointsWordCloud: document.getElementById('good-points-word-cloud'),
+            sessionIdDisplay: document.getElementById('session-id-display'),
+            logoutBtn: document.getElementById('logout-btn'),
+            newResponseBtn: document.getElementById('new-response-btn'),
+        };
+        const state = {
+            ratings: {},
+            textAnswers: { improvement: '', good_points: '' },
+            isLoggedIn: false,
+            allResponses: [],
+            isSubmitting: false,
+            hasSubmitted: false,
+        };
+        const surveyQuestions = [
+            { id: 'q1', text: 'Recebo orientações claras sobre minhas atividades e metas?' },
+            { id: 'q2', text: 'A liderança comunica bem as prioridades do time?' },
+            { id: 'q3', text: 'A forma de abordagem da liderança no dia a dia é adequada?' },
+            { id: 'q4', text: 'Os feedbacks recebidos são construtivos e ajudam no meu desenvolvimento?' },
+            { id: 'q5', text: 'Sinto abertura para trazer ideias, dúvidas ou preocupações à liderança?' },
+            { id: 'q6', text: 'A liderança acompanha meu desenvolvimento profissional?' },
+            { id: 'q7', text: 'Recebo suporte adequado quando encontro dificuldades?' },
+            { id: 'q8', text: 'A liderança motiva e engaja o time para alcançar os objetivos?' },
+            { id: 'q9', text: 'O humor e a energia da liderança no dia a dia são positivos?' },
+            { id: 'q10', text: 'O clima da equipe é positivo?' },
+        ];
+        const stopWords = new Set([
+            'a', 'o', 'as', 'os', 'e', 'é', 'em', 'para', 'com', 'de', 'do', 'da', 'dos', 'das', 'no', 'na',
+            'nos', 'nas', 'um', 'uma', 'uns', 'umas', 'por', 'porém', 'mas', 'não', 'que', 'se', 'me', 'meu',
+            'minha', 'comigo', 'conosco', 'nosso', 'nossa', 'isso', 'aquilo', 'este', 'essa', 'disso', 'disso',
+            'pelo', 'pela', 'pelos', 'pelas', 'pra', 'ir', 'ter', 'ser', 'estar'
+        ]);
+        const processTextForWordCloud = (answers) => {
+            const fullText = answers.join(' ').toLowerCase();
+            const words = fullText.split(/\s+/).filter(word => word.length > 2 && !stopWords.has(word));
+            const wordCounts = words.reduce((acc, word) => {
+                acc.set(word, (acc.get(word) || 0) + 1);
+                return acc;
+            }, new Map());
+            const wordCloudData = Array.from(wordCounts.entries())
+                .map(([text, count]) => ({ text, count }))
+                .sort((a, b) => b.count - a.count)
+                .slice(0, 50);
+            const maxCount = wordCloudData.length > 0 ? wordCloudData[0].count : 1;
+            const minSize = 0.8;
+            const maxSize = 3.5;
+            return wordCloudData.map(word => ({
+                text: word.text,
+                size: minSize + ((word.count / maxCount) * (maxSize - minSize))
+            }));
+        };
+        const renderForm = () => {
+            uiElements.questionsContainer.innerHTML = '';
+            surveyQuestions.forEach(question => {
+                const questionDiv = document.createElement('div');
+                questionDiv.className = 'bg-gray-500/20 p-4 rounded-lg shadow-inner';
+                questionDiv.style.backgroundColor = '#f1f1f1';
+                questionDiv.innerHTML = `
+                    <p class="font-medium mb-4" style="color:#19234f;">${question.text}</p>
+                    <div class="flex flex-wrap justify-between gap-2">
+                        ${[1, 2, 3, 4, 5].map(option => `
+                            <div class="relative flex items-center">
+                                <input type="radio" id="q${question.id}o${option}" name="q${question.id}" value="${option}" class="hidden peer" data-question-id="${question.id}" data-rating="${option}" />
+                                <label for="q${question.id}o${option}" class="w-12 h-12 flex items-center justify-center rounded-full text-sm font-bold cursor-pointer transition-all duration-300 shadow-lg peer-checked:bg-[#66c1b0] peer-checked:text-white peer-checked:shadow-lg bg-[#19234f] text-white">
+                                    ${option}
+                                </label>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+                uiElements.questionsContainer.appendChild(questionDiv);
+            });
+            // Adiciona listeners para os botões de rádio
+            uiElements.questionsContainer.addEventListener('change', (event) => {
+                if (event.target.type === 'radio') {
+                    const questionId = event.target.dataset.questionId;
+                    const rating = parseInt(event.target.dataset.rating);
+                    state.ratings[questionId] = rating;
+                }
+            });
+        };
+        const renderDashboard = () => {
+            const responses = state.allResponses;
+            const totals = {};
+            surveyQuestions.forEach(q => totals[q.id] = { sum: 0, count: 0 });
+            responses.forEach(response => {
+                if (response.ratings) {
+                    surveyQuestions.forEach(q => {
+                        if (response.ratings[q.id]) {
+                            totals[q.id].sum += response.ratings[q.id];
+                            totals[q.id].count++;
+                        }
+                    });
+                }
+            });
+            uiElements.averagesContainer.innerHTML = '';
+            surveyQuestions.forEach(q => {
+                const { sum, count } = totals[q.id];
+                const value = count > 0 ? sum / count : 0;
+                const progressWidth = (value / 5) * 100;
+                const avgDiv = document.createElement('div');
+                avgDiv.innerHTML = `
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-sm md:text-base font-medium" style="color:#FFFFFF;">${q.text}</span>
+                        <span class="text-lg font-bold" style="color:#66c1b0;">${value.toFixed(2)}</span>
+                    </div>
+                    <div class="w-full rounded-full h-2.5" style="background-color:#66c1b0;">
+                        <div class="h-2.5 rounded-full transition-all duration-500" style="background-color:#FFFFFF; width: ${progressWidth}%;"></div>
+                    </div>
+                `;
+                uiElements.averagesContainer.appendChild(avgDiv);
+            });
+            
+            // Renderiza a nuvem de palavras
+            const improvementAnswers = responses.map(r => r.textAnswers?.improvement).filter(text => text && text.trim() !== '');
+            const goodPointsAnswers = responses.map(r => r.textAnswers?.good_points).filter(text => text && text.trim() !== '');
+            
+            const improvementWordCloudData = processTextForWordCloud(improvementAnswers);
+            const goodPointsWordCloudData = processTextForWordCloud(goodPointsAnswers);
+            
+            uiElements.improvementWordCloud.innerHTML = '';
+            uiElements.goodPointsWordCloud.innerHTML = '';
+            if (improvementWordCloudData.length === 0) {
+                uiElements.improvementWordCloud.innerHTML = '<p class="text-sm italic" style="color:#19234f;">Nenhuma palavra-chave encontrada.</p>';
+            } else {
+                improvementWordCloudData.forEach(word => {
+                    const span = document.createElement('span');
+                    span.textContent = word.text;
+                    let color = '#19234f';
+                    if (word.size > 2.5) color = '#19234f';
+                    else if (word.size > 1.8) color = '#19234f';
+                    span.className = `font-semibold transition-all duration-300`;
+                    span.style.fontSize = `${word.size}rem`;
+                    span.style.color = color;
+                    uiElements.improvementWordCloud.appendChild(span);
+                });
+            }
+            if (goodPointsWordCloudData.length === 0) {
+                uiElements.goodPointsWordCloud.innerHTML = '<p class="text-sm italic" style="color:#19234f;">Nenhuma palavra-chave encontrada.</p>';
+            } else {
+                goodPointsWordCloudData.forEach(word => {
+                    const span = document.createElement('span');
+                    span.textContent = word.text;
+                    let color = '#19234f';
+                    if (word.size > 2.5) color = '#19234f';
+                    else if (word.size > 1.8) color = '#19234f';
+                    span.className = `font-semibold transition-all duration-300`;
+                    span.style.fontSize = `${word.size}rem`;
+                    span.style.color = color;
+                    uiElements.goodPointsWordCloud.appendChild(span);
+                });
+            }
+            uiElements.loadingResults.classList.add('hidden');
+            uiElements.loadedContent.classList.remove('hidden');
+        };
+
+        const resetForm = () => {
+            state.hasSubmitted = false;
+            state.ratings = {};
+            state.textAnswers = { improvement: '', good_points: '' };
+            uiElements.improvementText.value = '';
+            uiElements.goodPointsText.value = '';
+
+            // Desmarca todos os botões de rádio
+            const radioButtons = uiElements.questionsContainer.querySelectorAll('input[type="radio"]');
+            radioButtons.forEach(radio => radio.checked = false);
+
+            uiElements.feedbackSection.querySelector('#feedback-form').classList.remove('hidden');
+            uiElements.thankYouMessage.classList.add('hidden');
+        };
+
+        const setupEventListeners = () => {
+            uiElements.submitBtn.addEventListener('click', async () => {
+                if (state.isSubmitting) return;
+                
+                // Validação corrigida para verificar se todas as perguntas de rádio foram respondidas
+                const isAllQuestionsAnswered = surveyQuestions.every(q => state.ratings.hasOwnProperty(q.id));
+                if (!isAllQuestionsAnswered) {
+                    alert("Por favor, responda a todas as perguntas antes de enviar.");
+                    return;
+                }
+
+                state.isSubmitting = true;
+                uiElements.submitBtn.innerHTML = 'Enviando...';
+                uiElements.submitBtn.disabled = true;
+                const submissionData = {
+                    ratings: state.ratings,
+                    textAnswers: {
+                        improvement: uiElements.improvementText.value,
+                        good_points: uiElements.goodPointsText.value,
+                    },
+                    timestamp: new Date(),
+                };
+                try {
+                    if (feedbackCollection) {
+                        await addDoc(feedbackCollection, submissionData);
+                        state.hasSubmitted = true;
+                        uiElements.feedbackSection.querySelector('#feedback-form').classList.add('hidden');
+                        uiElements.thankYouMessage.classList.remove('hidden');
+                    } else {
+                        console.error("Firestore collection not initialized.");
+                    }
+                } catch (e) {
+                    console.error("Erro ao adicionar documento: ", e);
+                } finally {
+                    state.isSubmitting = false;
+                    uiElements.submitBtn.innerHTML = 'Enviar Respostas';
+                    uiElements.submitBtn.disabled = false;
+                }
+            });
+            uiElements.accessDashboardBtn.addEventListener('click', () => {
+                uiElements.feedbackSection.classList.add('hidden');
+                uiElements.dashboardSection.classList.remove('hidden');
+                uiElements.loginForm.classList.remove('hidden');
+                uiElements.resultsDashboard.classList.add('hidden');
+            });
+            
+            uiElements.loginBtn.addEventListener('click', () => {
+                const username = uiElements.dashboardUsername.value;
+                const password = uiElements.dashboardPassword.value;
+                if (username === 'admin' && password === '123') {
+                    state.isLoggedIn = true;
+                    uiElements.loginForm.classList.add('hidden');
+                    uiElements.resultsDashboard.classList.remove('hidden');
+                    renderDashboard();
+                } else {
+                    uiElements.loginError.classList.remove('hidden');
+                }
+            });
+            uiElements.logoutBtn.addEventListener('click', () => {
+                state.isLoggedIn = false;
+                uiElements.dashboardSection.classList.add('hidden');
+                uiElements.feedbackSection.classList.remove('hidden');
+                resetForm(); // Reseta o formulário
+            });
+            // Lógica para o Modal da Frase e KPI
+            const kpiDetails = {
+                vendas: { title: 'Detalhes de Vendas de Planos', content: `<ul class="list-disc list-inside space-y-2"><li>Acompanhar metas estabelecidas em forecast.</li><li>Delta % acima de 75% em Planos Validados.</li></ul>` },
+                inadimplencia: { title: 'Detalhes de Inadimplência', content: `<ul class="list-disc list-inside space-y-2"><li>Atraso mensal inferior a 10%.</li><li>Inadimplência geral inferior a 14%.</li></ul>` },
+                servicos: { title: 'Detalhes de Serviços (Satisfação)', content: `<ul class="list-disc list-inside space-y-2"><li>Serviços de Cremação Avulsa</li><li>Carência ZERO</li><li>PET</li><li>Cartão TEM</li><li>Planos B2B</li></ul>` },
+                delta: { title: 'Detalhes de Delta % Planos Novos', content: `<ul class="list-disc list-inside space-y-2"><li>Meta de CPFs novos entrantes acima de 80%.</li></ul>` },
+                engajamento: { title: 'Detalhes de Engajamento e Condução', content: `<ul class="list-disc list-inside space-y-2"><li>Participação e condução de reuniões</li><li>Tomada de decisão</li><li>Gestão de Conflitos</li><li>Propostas de Melhoria e Planos de Ação</li><li>Condução da Equipe</li></ul>` },
+                feedback: { title: 'Detalhes de Feedback da Equipe', content: `<ul class="list-disc list-inside space-y-2"><li>Será em notas ou estrelas.</li><li>Apuração PDI individual.</li><li>Performance dos Colaboradores.</li><li>Customer Satisfaction Interno.</li></ul>` },
+                percepcao: { title: 'Detalhes de Percepção do Gestor', content: `<ul class="list-disc list-inside space-y-2"><li>Comunicação com a Equipe</li><li>Comunicação Verbal</li><li>Métodos e Tratativas com colaboradores</li><li>Transformação (tornar todos o melhor da mesa)</li></ul>` }
+            };
+            const kpiModal = document.getElementById('kpiModal');
+            const modalTitle = document.getElementById('modalTitle');
+            const modalContent = document.getElementById('modalContent');
+            const closeModalBtn = document.getElementById('closeModal');
+            const kpiCards = document.querySelectorAll('.kpi-card');
+            const openKpiModal = (kpiId) => {
+                const details = kpiDetails[kpiId];
+                if (!details) return;
+                modalTitle.textContent = details.title;
+                modalContent.innerHTML = details.content;
+                kpiModal.classList.remove('hidden');
+                setTimeout(() => { kpiModal.classList.remove('opacity-0'); kpiModal.querySelector('.transform').classList.remove('scale-95'); }, 10);
+            };
+            const closeKpiModal = () => {
+                kpiModal.classList.add('opacity-0');
+                kpiModal.querySelector('.transform').classList.add('scale-95');
+                setTimeout(() => { kpiModal.classList.add('hidden'); }, 300);
+            };
+            kpiCards.forEach(card => card.addEventListener('click', () => openKpiModal(card.dataset.kpi)));
+            closeModalBtn.addEventListener('click', closeKpiModal);
+            kpiModal.addEventListener('click', (event) => { if (event.target === kpiModal) closeKpiModal(); });
+            const saibaMaisBtn = document.getElementById('saibaMaisBtn');
+            const quoteModal = document.getElementById('quoteModal');
+            const closeQuoteModalBtn = document.getElementById('closeQuoteModal');
+            const openQuoteModal = () => {
+                quoteModal.classList.remove('hidden');
+                setTimeout(() => quoteModal.classList.remove('opacity-0'), 10);
+            };
+            const closeQuoteModal = () => {
+                quoteModal.classList.add('opacity-0');
+                setTimeout(() => quoteModal.classList.add('hidden'), 500);
+            };
+            saibaMaisBtn.addEventListener('click', openQuoteModal);
+            closeQuoteModalBtn.addEventListener('click', closeQuoteModal);
+            quoteModal.addEventListener('click', (event) => { if (event.target === quoteModal) closeQuoteModal(); });
+
+            // Novo evento para o botão de nova resposta
+            uiElements.newResponseBtn.addEventListener('click', () => {
+                resetForm();
+            });
+        };
+        
+        const init = async () => {
+            // Inicializa o Firebase
+            try {
+                // Remove a verificação de firebaseConfig, pois a plataforma injeta isso no ambiente.
+                // Não é mais necessário verificar o `__initial_auth_token`, pois `signInAnonymously` é a melhor fallback.
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                
+                // Realiza a autenticação de forma síncrona para garantir que o usuário está logado antes de continuar
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+
+                // O onAuthStateChanged é um listener, não uma função de inicialização.
+                // Ele deve ser usado para reagir a mudanças no estado de autenticação.
+                // A exibição inicial da UI deve ser feita após a autenticação inicial.
+                uiElements.sessionIdDisplay.textContent = `ID da Sessão: ${auth.currentUser?.uid || 'Anônimo'}`;
+                
+                feedbackCollection = collection(db, `/artifacts/${appId}/public/data/feedback`);
+                onSnapshot(feedbackCollection, (querySnapshot) => {
+                    const responses = [];
+                    querySnapshot.forEach((doc) => {
+                        responses.push(doc.data());
+                    });
+                    state.allResponses = responses;
+                    if (state.isLoggedIn) {
+                            renderDashboard();
+                    }
+                }, (error) => {
+                    console.error("Error listening to changes:", error);
+                });
+            } catch (error) {
+                console.error("Failed to initialize Firebase:", error);
+            }
+            
+            // Corrige a lógica para exibir o formulário de feedback por padrão
+            uiElements.feedbackSection.classList.remove('hidden');
+            uiElements.dashboardSection.classList.add('hidden');
+            renderForm();
+            setupEventListeners();
+        };
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
