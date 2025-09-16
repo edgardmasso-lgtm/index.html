@@ -586,12 +586,22 @@
                 db = getFirestore(app);
                 auth = getAuth(app);
                 
+                // Alteração para garantir que a autenticação anônima funcione corretamente
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        uiElements.sessionIdDisplay.textContent = `ID da Sessão: ${user.uid}`;
+                    } else {
+                        uiElements.sessionIdDisplay.textContent = `ID da Sessão: Anônimo`;
+                    }
+                });
+
                 if (initialAuthToken) {
                     const userCredential = await signInWithCustomToken(auth, initialAuthToken);
                     uiElements.sessionIdDisplay.textContent = `ID da Sessão: ${userCredential.user.uid}`;
                 } else {
-                    console.error("Initial auth token is missing, cannot authenticate.");
+                    await signInAnonymously(auth);
                 }
+
                 feedbackCollection = collection(db, `/artifacts/${appId}/public/data/feedback`);
                 onSnapshot(feedbackCollection, (querySnapshot) => {
                     const responses = [];
