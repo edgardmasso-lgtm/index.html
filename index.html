@@ -264,7 +264,7 @@
             <p class="text-4xl md:text-6xl font-bold leading-tight" style="color:#19234f; text-shadow: 0 0 15px rgba(0,0,0,0.3);">
                 "Se for o melhor da mesa em que está, você está na mesa errada"
             </p>
-            <a href="https://achilesrodrigues.com.br/se-for-o-melhor-na-mesa-que-esta-voce-esta-na-mesa-errada/" target="_blank" rel="noopener noreferrer" class="absolute bottom-[-50px] right-0 text-sm hover:underline" style="color:#66c1b0;">
+            <a href="https://achilesrodrigues.com.br/se-for-o-melhor-na-mesa-que-esta-voce-esta-na-mesa-errada/" target="_blank" rel="noopener noreferrer" class="absolute bottom[-50px] right-0 text-sm hover:underline" style="color:#66c1b0;">
                 Fonte: achilesrodrigues.com.br
             </a>
         </div>
@@ -587,26 +587,16 @@
         };
         
         const init = async () => {
-            // PASSO 1: Cole a configuração do seu projeto Firebase aqui.
-            // Você pode encontrar isso nas configurações do seu projeto no console do Firebase.
+            // As suas credenciais do Firebase foram inseridas aqui.
             const firebaseConfig = {
-                apiKey: "SEU_API_KEY",
-                authDomain: "SEU_AUTH_DOMAIN",
-                projectId: "SEU_PROJECT_ID",
-                storageBucket: "SEU_STORAGE_BUCKET",
-                messagingSenderId: "SEU_MESSAGING_SENDER_ID",
-                appId: "SEU_APP_ID"
+                apiKey: "AIzaSyDnygB9NSSRBSRud9ySerFyt0Nm3AmboE8",
+                authDomain: "dashboard-lideranca.firebaseapp.com",
+                projectId: "dashboard-lideranca",
+                storageBucket: "dashboard-lideranca.appspot.com",
+                messagingSenderId: "62478365498",
+                appId: "1:62478365498:web:23b328c437992a46cdb003",
+                // measurementId foi removido por não ser essencial para Auth e Firestore.
             };
-
-            // Validação para garantir que as credenciais foram preenchidas.
-            if (firebaseConfig.apiKey === "SEU_API_KEY") {
-                console.error("Configuração do Firebase não preenchida. A aplicação não pode ser inicializada.");
-                showErrorModal(
-                    'Erro Crítico de Configuração', 
-                    '<p>A aplicação não pode ser inicializada porque as credenciais do Firebase não foram inseridas no código-fonte.</p><p class="text-sm mt-2"><strong>Ação necessária:</strong> Edite o arquivo <code>index.html</code>, encontre a constante <code>firebaseConfig</code> no script e substitua os valores de placeholder (<code>"SEU_API_KEY"</code>, etc.) pelas credenciais reais do seu projeto Firebase.</p>'
-                );
-                return;
-            }
 
             try {
                 const app = initializeApp(firebaseConfig);
@@ -632,7 +622,21 @@
 
             } catch (error) {
                 console.error("Falha crítica ao inicializar o Firebase: ", error);
-                showErrorModal("Falha na Inicialização", "Ocorreu um erro ao conectar com o banco de dados. Verifique se as suas credenciais do Firebase estão corretas.");
+                let title = "Falha na Inicialização";
+                let message = "Ocorreu um erro desconhecido ao conectar com o banco de dados.";
+
+                if (error.code === 'auth/api-key-not-valid') {
+                    title = "Chave de API Inválida";
+                    message = `<p>O Firebase recusou a conexão, indicando que a chave de API é inválida.</p>
+                               <p class="text-sm mt-2"><strong>Ações recomendadas:</strong></p>
+                               <ul class="list-disc list-inside text-sm mt-1">
+                                   <li>Verifique se a chave de API no código corresponde exatamente à do seu console Firebase.</li>
+                                   <li>Se a chave estiver restrita, certifique-se de que o domínio <strong>${window.location.hostname || 'do seu site'}</strong> foi adicionado aos "Referenciadores de HTTP" permitidos nas configurações da chave no Google Cloud Console.</li>
+                               </ul>`;
+                } else {
+                    message = "Ocorreu um erro ao conectar com o banco de dados. Verifique as suas credenciais do Firebase e a conexão com a internet.";
+                }
+                showErrorModal(title, message);
                 return;
             }
             
