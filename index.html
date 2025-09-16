@@ -94,12 +94,12 @@
         
         <header class="text-center mb-8 md:mb-12">
             <div class="mb-8">
-                <!-- LOGO CORRIGIDA: Substitua a URL abaixo pela URL pública da sua imagem -->
                 <img src="https://storage.googleapis.com/gcs-public-data-bucket-for-gen-app-builder-demo/elysiun7_logo_monocromatica_azul.jpg" alt="Logo Elysiun7" class="mx-auto h-20">
             </div>
             <h1 class="text-4xl md:text-5xl font-bold" style="color:#66c1b0;">Avaliação de Liderança e Clima</h1>
             <p class="text-xl mt-2" style="color:#19234f;">Painel de Feedback e Gestão</p>
         </header>
+        
         <!-- Formulário e Dashboard Integrados -->
         <div id="feedback-section" class="mt-8">
             <h2 class="section-title text-center" style="color:#19234f; border-color: #66c1b0;">Feedback da Equipe</h2>
@@ -158,16 +158,16 @@
             </div>
             <div id="results-dashboard" class="space-y-8 hidden">
                 <div class="flex justify-between items-center mb-6">
-                  <h2 class="text-2xl md:text-3xl font-bold" style="color:#66c1b0;">Dashboard de Resultados</h2>
-                  <div class="flex items-center space-x-4">
-                    <span id="session-id-display" class="font-mono px-3 py-1 rounded-full" style="background-color:#19234f; color:#66c1b0;"></span>
-                    <button id="logout-btn" class="font-semibold py-1 px-3 rounded-lg transition-all duration-300 border hover:opacity-80" style="color:#ff0000; border-color: #ff0000; background-color:#FFFFFF;">
-                        Sair
-                    </button>
-                  </div>
+                    <h2 class="text-2xl md:text-3xl font-bold" style="color:#66c1b0;">Dashboard de Resultados</h2>
+                    <div class="flex items-center space-x-4">
+                         <span id="response-count-display" class="font-mono px-3 py-1 rounded-full text-sm" style="background-color:#19234f; color:#66c1b0;"></span>
+                        <button id="logout-btn" class="font-semibold py-1 px-3 rounded-lg transition-all duration-300 border hover:opacity-80" style="color:#ff0000; border-color: #ff0000; background-color:#FFFFFF;">
+                            Sair
+                        </button>
+                    </div>
                 </div>
                 <div id="loading-results" class="text-center py-20" style="color:#19234f;">
-                  <p class="animate-pulse">Carregando resultados...</p>
+                    <p class="animate-pulse">Carregando resultados...</p>
                 </div>
                 <div id="loaded-content" class="space-y-8 hidden">
                     <!-- KPIs Diretos e Indiretos -->
@@ -270,29 +270,22 @@
         </div>
     </div>
     <script type="module">
+        // Importa as funções necessárias do Firebase SDK
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, getDocs, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        // Variáveis globais de ambiente (definidas no ambiente de execução)
-        // Usando uma configuração de Firebase padrão para que a aplicação funcione.
-        const firebaseConfig = {
-            apiKey: "sua-api-key-aqui",
-            authDomain: "seu-auth-domain-aqui",
-            projectId: "seu-project-id-aqui",
-            storageBucket: "seu-storage-bucket-aqui",
-            messagingSenderId: "seu-messaging-sender-id-aqui",
-            appId: "seu-app-id-aqui"
-        };
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Variáveis globais para Firebase e estado da aplicação
         let db, auth, feedbackCollection;
+
         const uiElements = {
-            kpiSection: document.getElementById('kpi-section'),
             feedbackSection: document.getElementById('feedback-section'),
             questionsContainer: document.getElementById('questions-container'),
             improvementText: document.getElementById('improvement'),
             goodPointsText: document.getElementById('good_points'),
             submitBtn: document.getElementById('submit-btn'),
             thankYouMessage: document.getElementById('thank-you-message'),
+            newResponseBtn: document.getElementById('new-response-btn'),
             accessDashboardBtn: document.getElementById('access-dashboard-btn'),
             dashboardSection: document.getElementById('dashboard-section'),
             loginForm: document.getElementById('login-form'),
@@ -306,18 +299,17 @@
             averagesContainer: document.getElementById('averages-container'),
             improvementWordCloud: document.getElementById('improvement-word-cloud'),
             goodPointsWordCloud: document.getElementById('good-points-word-cloud'),
-            sessionIdDisplay: document.getElementById('session-id-display'),
+            responseCountDisplay: document.getElementById('response-count-display'),
             logoutBtn: document.getElementById('logout-btn'),
-            newResponseBtn: document.getElementById('new-response-btn'),
         };
+
         const state = {
             ratings: {},
-            textAnswers: { improvement: '', good_points: '' },
             isLoggedIn: false,
             allResponses: [],
             isSubmitting: false,
-            hasSubmitted: false,
         };
+
         const surveyQuestions = [
             { id: 'q1', text: 'Recebo orientações claras sobre minhas atividades e metas?' },
             { id: 'q2', text: 'A liderança comunica bem as prioridades do time?' },
@@ -330,147 +322,127 @@
             { id: 'q9', text: 'O humor e a energia da liderança no dia a dia são positivos?' },
             { id: 'q10', text: 'O clima da equipe é positivo?' },
         ];
-        const stopWords = new Set([
-            'a', 'o', 'as', 'os', 'e', 'é', 'em', 'para', 'com', 'de', 'do', 'da', 'dos', 'das', 'no', 'na',
-            'nos', 'nas', 'um', 'uma', 'uns', 'umas', 'por', 'porém', 'mas', 'não', 'que', 'se', 'me', 'meu',
-            'minha', 'comigo', 'conosco', 'nosso', 'nossa', 'isso', 'aquilo', 'este', 'essa', 'disso', 'disso',
-            'pelo', 'pela', 'pelos', 'pelas', 'pra', 'ir', 'ter', 'ser', 'estar'
-        ]);
+
+        const stopWords = new Set(['a', 'o', 'as', 'os', 'e', 'é', 'em', 'para', 'com', 'de', 'do', 'da', 'dos', 'das', 'no', 'na', 'nos', 'nas', 'um', 'uma', 'uns', 'umas', 'por', 'mas', 'não', 'que', 'se', 'meu', 'minha', 'ser', 'estar']);
+
         const processTextForWordCloud = (answers) => {
-            const fullText = answers.join(' ').toLowerCase();
+            const fullText = answers.join(' ').toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"");
             const words = fullText.split(/\s+/).filter(word => word.length > 2 && !stopWords.has(word));
             const wordCounts = words.reduce((acc, word) => {
                 acc.set(word, (acc.get(word) || 0) + 1);
                 return acc;
             }, new Map());
+
             const wordCloudData = Array.from(wordCounts.entries())
                 .map(([text, count]) => ({ text, count }))
                 .sort((a, b) => b.count - a.count)
-                .slice(0, 50);
-            const maxCount = wordCloudData.length > 0 ? wordCloudData[0].count : 1;
+                .slice(0, 30);
+
+            if (wordCloudData.length === 0) return [];
+
+            const maxCount = wordCloudData[0].count;
             const minSize = 0.8;
-            const maxSize = 3.5;
+            const maxSize = 2.5;
+
             return wordCloudData.map(word => ({
                 text: word.text,
                 size: minSize + ((word.count / maxCount) * (maxSize - minSize))
             }));
         };
+        
+        const renderWordCloud = (container, data) => {
+            container.innerHTML = '';
+            if (data.length === 0) {
+                container.innerHTML = '<p class="text-sm italic" style="color:#19234f;">Nenhuma palavra-chave encontrada.</p>';
+            } else {
+                data.forEach(word => {
+                    const span = document.createElement('span');
+                    span.textContent = word.text;
+                    let color = '#19234f';
+                    if (word.size > 2.0) color = '#0d132a';
+                    else if (word.size > 1.5) color = '#19234f';
+                    span.className = `font-semibold transition-all duration-300`;
+                    span.style.fontSize = `${word.size}rem`;
+                    span.style.color = color;
+                    span.style.lineHeight = `${word.size * 1.2}rem`;
+                    container.appendChild(span);
+                });
+            }
+        };
+
         const renderForm = () => {
-            uiElements.questionsContainer.innerHTML = '';
-            surveyQuestions.forEach(question => {
-                const questionDiv = document.createElement('div');
-                questionDiv.className = 'bg-gray-500/20 p-4 rounded-lg shadow-inner';
-                questionDiv.style.backgroundColor = '#f1f1f1';
-                questionDiv.innerHTML = `
-                    <p class="font-medium mb-4" style="color:#19234f;">${question.text}</p>
+            uiElements.questionsContainer.innerHTML = surveyQuestions.map(question => `
+                <div class="p-4 rounded-lg shadow-inner" style="background-color:#f0f4f8;">
+                    <p class="font-medium mb-4 text-sm md:text-base" style="color:#19234f;">${question.text}</p>
                     <div class="flex flex-wrap justify-between gap-2">
                         ${[1, 2, 3, 4, 5].map(option => `
                             <div class="relative flex items-center">
-                                <input type="radio" id="q${question.id}o${option}" name="q${question.id}" value="${option}" class="hidden peer" data-question-id="${question.id}" data-rating="${option}" />
-                                <label for="q${question.id}o${option}" class="w-12 h-12 flex items-center justify-center rounded-full text-sm font-bold cursor-pointer transition-all duration-300 shadow-lg peer-checked:bg-[#66c1b0] peer-checked:text-white peer-checked:shadow-lg bg-[#19234f] text-white">
+                                <input type="radio" id="${question.id}-o${option}" name="${question.id}" value="${option}" class="hidden peer" />
+                                <label for="${question.id}-o${option}" class="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full text-sm font-bold cursor-pointer transition-all duration-300 shadow-md peer-checked:scale-110 peer-checked:bg-[#66c1b0] peer-checked:text-white bg-[#19234f] text-white">
                                     ${option}
                                 </label>
                             </div>
                         `).join('')}
                     </div>
-                `;
-                uiElements.questionsContainer.appendChild(questionDiv);
-            });
-            // Adiciona listeners para os botões de rádio
+                </div>
+            `).join('');
+            
             uiElements.questionsContainer.addEventListener('change', (event) => {
                 if (event.target.type === 'radio') {
-                    const questionId = event.target.dataset.questionId;
-                    const rating = parseInt(event.target.dataset.rating);
-                    state.ratings[questionId] = rating;
+                    state.ratings[event.target.name] = parseInt(event.target.value);
                 }
             });
         };
+
         const renderDashboard = () => {
             const responses = state.allResponses;
-            const totals = {};
-            surveyQuestions.forEach(q => totals[q.id] = { sum: 0, count: 0 });
+            uiElements.responseCountDisplay.textContent = `${responses.length} Resposta(s)`;
+
+            const totals = surveyQuestions.reduce((acc, q) => ({ ...acc, [q.id]: { sum: 0, count: 0 } }), {});
+            
             responses.forEach(response => {
                 if (response.ratings) {
-                    surveyQuestions.forEach(q => {
-                        if (response.ratings[q.id]) {
-                            totals[q.id].sum += response.ratings[q.id];
-                            totals[q.id].count++;
+                    Object.entries(response.ratings).forEach(([qid, rating]) => {
+                        if (totals[qid]) {
+                            totals[qid].sum += rating;
+                            totals[qid].count++;
                         }
                     });
                 }
             });
-            uiElements.averagesContainer.innerHTML = '';
-            surveyQuestions.forEach(q => {
+
+            uiElements.averagesContainer.innerHTML = surveyQuestions.map(q => {
                 const { sum, count } = totals[q.id];
                 const value = count > 0 ? sum / count : 0;
                 const progressWidth = (value / 5) * 100;
-                const avgDiv = document.createElement('div');
-                avgDiv.innerHTML = `
-                    <div class="flex justify-between items-center mb-1">
-                        <span class="text-sm md:text-base font-medium" style="color:#FFFFFF;">${q.text}</span>
-                        <span class="text-lg font-bold" style="color:#66c1b0;">${value.toFixed(2)}</span>
-                    </div>
-                    <div class="w-full rounded-full h-2.5" style="background-color:#66c1b0;">
-                        <div class="h-2.5 rounded-full transition-all duration-500" style="background-color:#FFFFFF; width: ${progressWidth}%;"></div>
+                return `
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-sm md:text-base font-medium" style="color:#FFFFFF;">${q.text}</span>
+                            <span class="text-lg font-bold" style="color:#66c1b0;">${value.toFixed(2)}</span>
+                        </div>
+                        <div class="w-full rounded-full h-2.5 bg-gray-700">
+                            <div class="h-2.5 rounded-full transition-all duration-500" style="background-color:#66c1b0; width: ${progressWidth}%;"></div>
+                        </div>
                     </div>
                 `;
-                uiElements.averagesContainer.appendChild(avgDiv);
-            });
+            }).join('');
             
-            // Renderiza a nuvem de palavras
-            const improvementAnswers = responses.map(r => r.textAnswers?.improvement).filter(text => text && text.trim() !== '');
-            const goodPointsAnswers = responses.map(r => r.textAnswers?.good_points).filter(text => text && text.trim() !== '');
+            const improvementAnswers = responses.map(r => r.textAnswers?.improvement).filter(Boolean);
+            const goodPointsAnswers = responses.map(r => r.textAnswers?.good_points).filter(Boolean);
             
-            const improvementWordCloudData = processTextForWordCloud(improvementAnswers);
-            const goodPointsWordCloudData = processTextForWordCloud(goodPointsAnswers);
+            renderWordCloud(uiElements.improvementWordCloud, processTextForWordCloud(improvementAnswers));
+            renderWordCloud(uiElements.goodPointsWordCloud, processTextForWordCloud(goodPointsAnswers));
             
-            uiElements.improvementWordCloud.innerHTML = '';
-            uiElements.goodPointsWordCloud.innerHTML = '';
-            if (improvementWordCloudData.length === 0) {
-                uiElements.improvementWordCloud.innerHTML = '<p class="text-sm italic" style="color:#19234f;">Nenhuma palavra-chave encontrada.</p>';
-            } else {
-                improvementWordCloudData.forEach(word => {
-                    const span = document.createElement('span');
-                    span.textContent = word.text;
-                    let color = '#19234f';
-                    if (word.size > 2.5) color = '#19234f';
-                    else if (word.size > 1.8) color = '#19234f';
-                    span.className = `font-semibold transition-all duration-300`;
-                    span.style.fontSize = `${word.size}rem`;
-                    span.style.color = color;
-                    uiElements.improvementWordCloud.appendChild(span);
-                });
-            }
-            if (goodPointsWordCloudData.length === 0) {
-                uiElements.goodPointsWordCloud.innerHTML = '<p class="text-sm italic" style="color:#19234f;">Nenhuma palavra-chave encontrada.</p>';
-            } else {
-                goodPointsWordCloudData.forEach(word => {
-                    const span = document.createElement('span');
-                    span.textContent = word.text;
-                    let color = '#19234f';
-                    if (word.size > 2.5) color = '#19234f';
-                    else if (word.size > 1.8) color = '#19234f';
-                    span.className = `font-semibold transition-all duration-300`;
-                    span.style.fontSize = `${word.size}rem`;
-                    span.style.color = color;
-                    uiElements.goodPointsWordCloud.appendChild(span);
-                });
-            }
             uiElements.loadingResults.classList.add('hidden');
             uiElements.loadedContent.classList.remove('hidden');
         };
 
         const resetForm = () => {
-            state.hasSubmitted = false;
             state.ratings = {};
-            state.textAnswers = { improvement: '', good_points: '' };
             uiElements.improvementText.value = '';
             uiElements.goodPointsText.value = '';
-
-            // Desmarca todos os botões de rádio
-            const radioButtons = uiElements.questionsContainer.querySelectorAll('input[type="radio"]');
-            radioButtons.forEach(radio => radio.checked = false);
-
+            document.querySelectorAll('input[type="radio"]').forEach(radio => radio.checked = false);
             uiElements.feedbackSection.querySelector('#feedback-form').classList.remove('hidden');
             uiElements.thankYouMessage.classList.add('hidden');
         };
@@ -478,47 +450,42 @@
         const setupEventListeners = () => {
             uiElements.submitBtn.addEventListener('click', async () => {
                 if (state.isSubmitting) return;
-                
-                // Validação corrigida para verificar se todas as perguntas de rádio foram respondidas
-                const isAllQuestionsAnswered = surveyQuestions.every(q => state.ratings.hasOwnProperty(q.id));
-                if (!isAllQuestionsAnswered) {
-                    alert("Por favor, responda a todas as perguntas antes de enviar.");
+
+                if (Object.keys(state.ratings).length < surveyQuestions.length) {
+                    alert("Por favor, responda a todas as perguntas de múltipla escolha antes de enviar.");
                     return;
                 }
 
                 state.isSubmitting = true;
-                uiElements.submitBtn.innerHTML = 'Enviando...';
+                uiElements.submitBtn.textContent = 'Enviando...';
                 uiElements.submitBtn.disabled = true;
+
                 const submissionData = {
                     ratings: state.ratings,
                     textAnswers: {
                         improvement: uiElements.improvementText.value,
                         good_points: uiElements.goodPointsText.value,
                     },
-                    timestamp: new Date(),
+                    timestamp: new Date().toISOString(),
                 };
+
                 try {
-                    if (feedbackCollection) {
-                        await addDoc(feedbackCollection, submissionData);
-                        state.hasSubmitted = true;
-                        uiElements.feedbackSection.querySelector('#feedback-form').classList.add('hidden');
-                        uiElements.thankYouMessage.classList.remove('hidden');
-                    } else {
-                        console.error("Firestore collection not initialized.");
-                    }
+                    await addDoc(feedbackCollection, submissionData);
+                    uiElements.feedbackSection.querySelector('#feedback-form').classList.add('hidden');
+                    uiElements.thankYouMessage.classList.remove('hidden');
                 } catch (e) {
                     console.error("Erro ao adicionar documento: ", e);
+                    alert("Ocorreu um erro ao enviar suas respostas. Verifique o console para mais detalhes.");
                 } finally {
                     state.isSubmitting = false;
-                    uiElements.submitBtn.innerHTML = 'Enviar Respostas';
+                    uiElements.submitBtn.textContent = 'Enviar Respostas';
                     uiElements.submitBtn.disabled = false;
                 }
             });
+
             uiElements.accessDashboardBtn.addEventListener('click', () => {
                 uiElements.feedbackSection.classList.add('hidden');
                 uiElements.dashboardSection.classList.remove('hidden');
-                uiElements.loginForm.classList.remove('hidden');
-                uiElements.resultsDashboard.classList.add('hidden');
             });
             
             uiElements.loginBtn.addEventListener('click', () => {
@@ -526,6 +493,7 @@
                 const password = uiElements.dashboardPassword.value;
                 if (username === 'admin' && password === '123') {
                     state.isLoggedIn = true;
+                    uiElements.loginError.classList.add('hidden');
                     uiElements.loginForm.classList.add('hidden');
                     uiElements.resultsDashboard.classList.remove('hidden');
                     renderDashboard();
@@ -533,13 +501,19 @@
                     uiElements.loginError.classList.remove('hidden');
                 }
             });
+
             uiElements.logoutBtn.addEventListener('click', () => {
                 state.isLoggedIn = false;
+                uiElements.dashboardUsername.value = '';
+                uiElements.dashboardPassword.value = '';
                 uiElements.dashboardSection.classList.add('hidden');
                 uiElements.feedbackSection.classList.remove('hidden');
-                resetForm(); // Reseta o formulário
+                resetForm();
             });
-            // Lógica para o Modal da Frase e KPI
+            
+            uiElements.newResponseBtn.addEventListener('click', resetForm);
+
+            // Lógica para Modais
             const kpiDetails = {
                 vendas: { title: 'Detalhes de Vendas de Planos', content: `<ul class="list-disc list-inside space-y-2"><li>Acompanhar metas estabelecidas em forecast.</li><li>Delta % acima de 75% em Planos Validados.</li></ul>` },
                 inadimplencia: { title: 'Detalhes de Inadimplência', content: `<ul class="list-disc list-inside space-y-2"><li>Atraso mensal inferior a 10%.</li><li>Inadimplência geral inferior a 14%.</li></ul>` },
@@ -550,93 +524,88 @@
                 percepcao: { title: 'Detalhes de Percepção do Gestor', content: `<ul class="list-disc list-inside space-y-2"><li>Comunicação com a Equipe</li><li>Comunicação Verbal</li><li>Métodos e Tratativas com colaboradores</li><li>Transformação (tornar todos o melhor da mesa)</li></ul>` }
             };
             const kpiModal = document.getElementById('kpiModal');
-            const modalTitle = document.getElementById('modalTitle');
-            const modalContent = document.getElementById('modalContent');
-            const closeModalBtn = document.getElementById('closeModal');
-            const kpiCards = document.querySelectorAll('.kpi-card');
-            const openKpiModal = (kpiId) => {
-                const details = kpiDetails[kpiId];
+            const quoteModal = document.getElementById('quoteModal');
+            
+            document.querySelectorAll('.kpi-card').forEach(card => card.addEventListener('click', () => {
+                const details = kpiDetails[card.dataset.kpi];
                 if (!details) return;
-                modalTitle.textContent = details.title;
-                modalContent.innerHTML = details.content;
+                kpiModal.querySelector('#modalTitle').textContent = details.title;
+                kpiModal.querySelector('#modalContent').innerHTML = details.content;
                 kpiModal.classList.remove('hidden');
                 setTimeout(() => { kpiModal.classList.remove('opacity-0'); kpiModal.querySelector('.transform').classList.remove('scale-95'); }, 10);
+            }));
+            
+            const closeModal = (modal) => {
+                modal.classList.add('opacity-0');
+                if (modal.querySelector('.transform')) modal.querySelector('.transform').classList.add('scale-95');
+                setTimeout(() => modal.classList.add('hidden'), 300);
             };
-            const closeKpiModal = () => {
-                kpiModal.classList.add('opacity-0');
-                kpiModal.querySelector('.transform').classList.add('scale-95');
-                setTimeout(() => { kpiModal.classList.add('hidden'); }, 300);
-            };
-            kpiCards.forEach(card => card.addEventListener('click', () => openKpiModal(card.dataset.kpi)));
-            closeModalBtn.addEventListener('click', closeKpiModal);
-            kpiModal.addEventListener('click', (event) => { if (event.target === kpiModal) closeKpiModal(); });
-            const saibaMaisBtn = document.getElementById('saibaMaisBtn');
-            const quoteModal = document.getElementById('quoteModal');
-            const closeQuoteModalBtn = document.getElementById('closeQuoteModal');
-            const openQuoteModal = () => {
+
+            kpiModal.querySelector('#closeModal').addEventListener('click', () => closeModal(kpiModal));
+            kpiModal.addEventListener('click', (e) => e.target === kpiModal && closeModal(kpiModal));
+
+            document.getElementById('saibaMaisBtn').addEventListener('click', () => {
                 quoteModal.classList.remove('hidden');
                 setTimeout(() => quoteModal.classList.remove('opacity-0'), 10);
-            };
-            const closeQuoteModal = () => {
-                quoteModal.classList.add('opacity-0');
-                setTimeout(() => quoteModal.classList.add('hidden'), 500);
-            };
-            saibaMaisBtn.addEventListener('click', openQuoteModal);
-            closeQuoteModalBtn.addEventListener('click', closeQuoteModal);
-            quoteModal.addEventListener('click', (event) => { if (event.target === quoteModal) closeQuoteModal(); });
-
-            // Novo evento para o botão de nova resposta
-            uiElements.newResponseBtn.addEventListener('click', () => {
-                resetForm();
             });
+            quoteModal.querySelector('#closeQuoteModal').addEventListener('click', () => closeModal(quoteModal));
+            quoteModal.addEventListener('click', (e) => e.target === quoteModal && closeModal(quoteModal));
         };
         
         const init = async () => {
-            // Inicializa o Firebase
+            // As variáveis __firebase_config, __app_id e __initial_auth_token são injetadas pelo ambiente.
+            // Isso remove a necessidade de chaves de API hardcoded no código.
+            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+            const firebaseConfigStr = typeof __firebase_config !== 'undefined' ? __firebase_config : null;
+            const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+            if (!firebaseConfigStr) {
+                console.error("Configuração do Firebase não encontrada. A aplicação não pode ser inicializada.");
+                alert("Erro crítico: A configuração do Firebase não foi carregada. A aplicação não funcionará.");
+                return;
+            }
+
             try {
-                // A sua configuração do Firebase não estava sendo injetada pela plataforma
-                // por isso, estou criando um objeto de configuração padrão para que a aplicação funcione.
-                // IMPORTANTE: você precisa substituir os valores abaixo com as suas credenciais do Firebase.
-                const firebaseConfig = {
-                    apiKey: "sua-api-key-aqui",
-                    authDomain: "seu-auth-domain-aqui",
-                    projectId: "seu-project-id-aqui",
-                    storageBucket: "seu-storage-bucket-aqui",
-                    messagingSenderId: "seu-messaging-sender-id-aqui",
-                    appId: "seu-app-id-aqui"
-                };
+                const firebaseConfig = JSON.parse(firebaseConfigStr);
                 const app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
                 auth = getAuth(app);
-
-                // Autenticação anônima é a melhor fallback para ambientes sem autenticação.
-                await signInAnonymously(auth);
-
-                uiElements.sessionIdDisplay.textContent = `ID da Sessão: ${auth.currentUser?.uid || 'Anônimo'}`;
                 
-                feedbackCollection = collection(db, `feedback`);
+                // Autenticação: Usa o token do ambiente se disponível, senão, anônimo.
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+                
+                console.log("Firebase inicializado e usuário autenticado com sucesso.");
+
+                // Define o caminho da coleção de forma segura.
+                const collectionPath = `artifacts/${appId}/public/data/feedback`;
+                feedbackCollection = collection(db, collectionPath);
+
+                // Escuta por atualizações em tempo real no banco de dados.
                 onSnapshot(feedbackCollection, (querySnapshot) => {
-                    const responses = [];
-                    querySnapshot.forEach((doc) => {
-                        responses.push(doc.data());
-                    });
-                    state.allResponses = responses;
+                    state.allResponses = querySnapshot.docs.map(doc => doc.data());
                     if (state.isLoggedIn) {
-                            renderDashboard();
+                        renderDashboard();
                     }
                 }, (error) => {
-                    console.error("Error listening to changes:", error);
+                    console.error("Erro ao escutar a coleção do Firestore:", error);
+                    alert("Não foi possível carregar os dados do dashboard. Verifique as regras de segurança do Firestore.");
                 });
+
             } catch (error) {
-                console.error("Failed to initialize Firebase:", error);
+                console.error("Falha crítica ao inicializar o Firebase: ", error);
+                alert("Ocorreu um erro ao conectar com o banco de dados. Verifique o console para mais detalhes.");
+                return;
             }
             
-            // Corrige a lógica para exibir o formulário de feedback por padrão
-            uiElements.feedbackSection.classList.remove('hidden');
-            uiElements.dashboardSection.classList.add('hidden');
             renderForm();
             setupEventListeners();
         };
+
+        // Inicia a aplicação quando o DOM estiver completamente carregado.
         document.addEventListener('DOMContentLoaded', init);
     </script>
 </body>
