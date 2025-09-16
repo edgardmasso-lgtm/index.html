@@ -269,10 +269,24 @@
             </a>
         </div>
     </div>
+    
+    <!-- Modal de Erro Genérico -->
+    <div id="errorModal" class="modal-overlay fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50 hidden">
+        <div class="rounded-xl shadow-2xl p-6 md:p-8 w-full max-w-lg text-white border" style="background-color:#c53030; border-color: #9b2c2c;">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="errorModalTitle" class="text-2xl font-bold">Ocorreu um Erro</h3>
+                <button id="closeErrorModal" class="text-3xl leading-none" style="color:white;">&times;</button>
+            </div>
+            <div id="errorModalContent" class="space-y-4 text-lg leading-relaxed">
+                <!-- Content will be injected by JS -->
+            </div>
+        </div>
+    </div>
+
     <script type="module">
         // Importa as funções necessárias do Firebase SDK
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Variáveis globais para Firebase e estado da aplicação
@@ -324,6 +338,17 @@
         ];
 
         const stopWords = new Set(['a', 'o', 'as', 'os', 'e', 'é', 'em', 'para', 'com', 'de', 'do', 'da', 'dos', 'das', 'no', 'na', 'nos', 'nas', 'um', 'uma', 'uns', 'umas', 'por', 'mas', 'não', 'que', 'se', 'meu', 'minha', 'ser', 'estar']);
+
+        const showErrorModal = (title, message) => {
+            const modal = document.getElementById('errorModal');
+            modal.querySelector('#errorModalTitle').textContent = title;
+            modal.querySelector('#errorModalContent').innerHTML = message;
+            modal.classList.remove('hidden');
+        };
+
+        const hideErrorModal = () => {
+             document.getElementById('errorModal').classList.add('hidden');
+        };
 
         const processTextForWordCloud = (answers) => {
             const fullText = answers.join(' ').toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"");
@@ -448,11 +473,20 @@
         };
 
         const setupEventListeners = () => {
+            document.getElementById('closeErrorModal').addEventListener('click', hideErrorModal);
+
             uiElements.submitBtn.addEventListener('click', async () => {
                 if (state.isSubmitting) return;
 
                 if (Object.keys(state.ratings).length < surveyQuestions.length) {
-                    alert("Por favor, responda a todas as perguntas de múltipla escolha antes de enviar.");
+                    const firstUnanswered = surveyQuestions.find(q => !state.ratings.hasOwnProperty(q.id));
+                    const element = document.getElementsByName(firstUnanswered.id)[0].closest('.p-4');
+                    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    element.style.transition = 'background-color 0.3s';
+                    element.style.backgroundColor = '#fdd';
+                    setTimeout(() => {
+                        element.style.backgroundColor = '#f0f4f8';
+                    }, 1500);
                     return;
                 }
 
@@ -475,7 +509,7 @@
                     uiElements.thankYouMessage.classList.remove('hidden');
                 } catch (e) {
                     console.error("Erro ao adicionar documento: ", e);
-                    alert("Ocorreu um erro ao enviar suas respostas. Verifique o console para mais detalhes.");
+                    showErrorModal("Erro ao Enviar", "Ocorreu um erro ao enviar suas respostas. Tente novamente mais tarde.");
                 } finally {
                     state.isSubmitting = false;
                     uiElements.submitBtn.textContent = 'Enviar Respostas';
@@ -553,38 +587,39 @@
         };
         
         const init = async () => {
-            // As variáveis __firebase_config, __app_id e __initial_auth_token são injetadas pelo ambiente.
-            // Isso remove a necessidade de chaves de API hardcoded no código.
-            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-            const firebaseConfigStr = typeof __firebase_config !== 'undefined' ? __firebase_config : null;
-            const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+            // PASSO 1: Cole a configuração do seu projeto Firebase aqui.
+            // Você pode encontrar isso nas configurações do seu projeto no console do Firebase.
+            const firebaseConfig = {
+                apiKey: "SEU_API_KEY",
+                authDomain: "SEU_AUTH_DOMAIN",
+                projectId: "SEU_PROJECT_ID",
+                storageBucket: "SEU_STORAGE_BUCKET",
+                messagingSenderId: "SEU_MESSAGING_SENDER_ID",
+                appId: "SEU_APP_ID"
+            };
 
-            if (!firebaseConfigStr) {
-                console.error("Configuração do Firebase não encontrada. A aplicação não pode ser inicializada.");
-                alert("Erro crítico: A configuração do Firebase não foi carregada. A aplicação não funcionará.");
+            // Validação para garantir que as credenciais foram preenchidas.
+            if (firebaseConfig.apiKey === "SEU_API_KEY") {
+                console.error("Configuração do Firebase não preenchida. A aplicação não pode ser inicializada.");
+                showErrorModal(
+                    'Erro Crítico de Configuração', 
+                    '<p>A aplicação não pode ser inicializada porque as credenciais do Firebase não foram inseridas no código-fonte.</p><p class="text-sm mt-2"><strong>Ação necessária:</strong> Edite o arquivo <code>index.html</code>, encontre a constante <code>firebaseConfig</code> no script e substitua os valores de placeholder (<code>"SEU_API_KEY"</code>, etc.) pelas credenciais reais do seu projeto Firebase.</p>'
+                );
                 return;
             }
 
             try {
-                const firebaseConfig = JSON.parse(firebaseConfigStr);
                 const app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
                 auth = getAuth(app);
                 
-                // Autenticação: Usa o token do ambiente se disponível, senão, anônimo.
-                if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken);
-                } else {
-                    await signInAnonymously(auth);
-                }
-                
+                await signInAnonymously(auth);
                 console.log("Firebase inicializado e usuário autenticado com sucesso.");
 
-                // Define o caminho da coleção de forma segura.
-                const collectionPath = `artifacts/${appId}/public/data/feedback`;
+                // Define o caminho da coleção de forma simples para portabilidade.
+                const collectionPath = `feedback`;
                 feedbackCollection = collection(db, collectionPath);
 
-                // Escuta por atualizações em tempo real no banco de dados.
                 onSnapshot(feedbackCollection, (querySnapshot) => {
                     state.allResponses = querySnapshot.docs.map(doc => doc.data());
                     if (state.isLoggedIn) {
@@ -592,12 +627,12 @@
                     }
                 }, (error) => {
                     console.error("Erro ao escutar a coleção do Firestore:", error);
-                    alert("Não foi possível carregar os dados do dashboard. Verifique as regras de segurança do Firestore.");
+                    showErrorModal("Erro de Conexão", "Não foi possível carregar os dados do dashboard. Verifique as regras de segurança do Firestore e sua conexão com a internet.");
                 });
 
             } catch (error) {
                 console.error("Falha crítica ao inicializar o Firebase: ", error);
-                alert("Ocorreu um erro ao conectar com o banco de dados. Verifique o console para mais detalhes.");
+                showErrorModal("Falha na Inicialização", "Ocorreu um erro ao conectar com o banco de dados. Verifique se as suas credenciais do Firebase estão corretas.");
                 return;
             }
             
@@ -610,3 +645,4 @@
     </script>
 </body>
 </html>
+
