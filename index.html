@@ -274,8 +274,15 @@
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, getDocs, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         // Variáveis globais de ambiente (definidas no ambiente de execução)
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        // Usando uma configuração de Firebase padrão para que a aplicação funcione.
+        const firebaseConfig = {
+            apiKey: "sua-api-key-aqui",
+            authDomain: "seu-auth-domain-aqui",
+            projectId: "seu-project-id-aqui",
+            storageBucket: "seu-storage-bucket-aqui",
+            messagingSenderId: "seu-messaging-sender-id-aqui",
+            appId: "seu-app-id-aqui"
+        };
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
         let db, auth, feedbackCollection;
         const uiElements = {
@@ -587,25 +594,27 @@
         const init = async () => {
             // Inicializa o Firebase
             try {
-                // Remove a verificação de firebaseConfig, pois a plataforma injeta isso no ambiente.
-                // Não é mais necessário verificar o `__initial_auth_token`, pois `signInAnonymously` é a melhor fallback.
+                // A sua configuração do Firebase não estava sendo injetada pela plataforma
+                // por isso, estou criando um objeto de configuração padrão para que a aplicação funcione.
+                // IMPORTANTE: você precisa substituir os valores abaixo com as suas credenciais do Firebase.
+                const firebaseConfig = {
+                    apiKey: "sua-api-key-aqui",
+                    authDomain: "seu-auth-domain-aqui",
+                    projectId: "seu-project-id-aqui",
+                    storageBucket: "seu-storage-bucket-aqui",
+                    messagingSenderId: "seu-messaging-sender-id-aqui",
+                    appId: "seu-app-id-aqui"
+                };
                 const app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
                 auth = getAuth(app);
-                
-                // Realiza a autenticação de forma síncrona para garantir que o usuário está logado antes de continuar
-                if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken);
-                } else {
-                    await signInAnonymously(auth);
-                }
 
-                // O onAuthStateChanged é um listener, não uma função de inicialização.
-                // Ele deve ser usado para reagir a mudanças no estado de autenticação.
-                // A exibição inicial da UI deve ser feita após a autenticação inicial.
+                // Autenticação anônima é a melhor fallback para ambientes sem autenticação.
+                await signInAnonymously(auth);
+
                 uiElements.sessionIdDisplay.textContent = `ID da Sessão: ${auth.currentUser?.uid || 'Anônimo'}`;
                 
-                feedbackCollection = collection(db, `/artifacts/${appId}/public/data/feedback`);
+                feedbackCollection = collection(db, `feedback`);
                 onSnapshot(feedbackCollection, (querySnapshot) => {
                     const responses = [];
                     querySnapshot.forEach((doc) => {
