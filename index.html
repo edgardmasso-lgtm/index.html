@@ -578,30 +578,24 @@
         const init = async () => {
             // Inicializa o Firebase
             try {
-                if (Object.keys(firebaseConfig).length === 0) {
-                    console.error("Firebase config is missing.");
-                    return;
-                }
+                // Remove a verificação de firebaseConfig, pois a plataforma injeta isso no ambiente.
+                // Não é mais necessário verificar o `__initial_auth_token`, pois `signInAnonymously` é a melhor fallback.
                 const app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
                 auth = getAuth(app);
                 
-                // Alteração para garantir que a autenticação anônima funcione corretamente
-                onAuthStateChanged(auth, (user) => {
-                    if (user) {
-                        uiElements.sessionIdDisplay.textContent = `ID da Sessão: ${user.uid}`;
-                    } else {
-                        uiElements.sessionIdDisplay.textContent = `ID da Sessão: Anônimo`;
-                    }
-                });
-
+                // Realiza a autenticação de forma síncrona para garantir que o usuário está logado antes de continuar
                 if (initialAuthToken) {
-                    const userCredential = await signInWithCustomToken(auth, initialAuthToken);
-                    uiElements.sessionIdDisplay.textContent = `ID da Sessão: ${userCredential.user.uid}`;
+                    await signInWithCustomToken(auth, initialAuthToken);
                 } else {
                     await signInAnonymously(auth);
                 }
 
+                // O onAuthStateChanged é um listener, não uma função de inicialização.
+                // Ele deve ser usado para reagir a mudanças no estado de autenticação.
+                // A exibição inicial da UI deve ser feita após a autenticação inicial.
+                uiElements.sessionIdDisplay.textContent = `ID da Sessão: ${auth.currentUser?.uid || 'Anônimo'}`;
+                
                 feedbackCollection = collection(db, `/artifacts/${appId}/public/data/feedback`);
                 onSnapshot(feedbackCollection, (querySnapshot) => {
                     const responses = [];
@@ -618,6 +612,10 @@
             } catch (error) {
                 console.error("Failed to initialize Firebase:", error);
             }
+            
+            // Corrige a lógica para exibir o formulário de feedback por padrão
+            uiElements.feedbackSection.classList.remove('hidden');
+            uiElements.dashboardSection.classList.add('hidden');
             renderForm();
             setupEventListeners();
         };
