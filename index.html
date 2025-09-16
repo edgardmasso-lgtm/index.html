@@ -484,6 +484,14 @@
                 };
                 try {
                     if (feedbackCollection) {
+                        // Verifica se todas as perguntas foram respondidas
+                        const isFormValid = surveyQuestions.every(q => state.ratings[q.id]);
+                        if (!isFormValid) {
+                          // Se o formulário for inválido, exibe uma mensagem de erro e interrompe a submissão.
+                          alert("Por favor, responda a todas as perguntas antes de enviar.");
+                          return;
+                        }
+                        
                         await addDoc(feedbackCollection, submissionData);
                         state.hasSubmitted = true;
                         uiElements.feedbackSection.querySelector('#feedback-form').classList.add('hidden');
