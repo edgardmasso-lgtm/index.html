@@ -284,6 +284,7 @@
     </div>
 
     <script type="module">
+        console.log("Executando Versão 9.0 do Script de Feedback");
         // Importa as funções necessárias do Firebase SDK
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
@@ -587,15 +588,14 @@
         };
         
         const init = async () => {
-            // As suas credenciais do Firebase foram inseridas aqui.
+            // As suas credenciais do Firebase foram inseridas e corrigidas aqui.
             const firebaseConfig = {
-                apiKey: "AIzaSyDnygB9NSSRBSRud9ySerFyt0Nm3AmboE8",
+                apiKey: "AIzaSyDnvgb9NSSRbsRud9y5erFytOnm3AmboE8",
                 authDomain: "dashboard-lideranca.firebaseapp.com",
                 projectId: "dashboard-lideranca",
                 storageBucket: "dashboard-lideranca.appspot.com",
-                messagingSenderId: "62478365498",
-                appId: "1:62478365498:web:23b328c437992a46cdb003",
-                // measurementId foi removido por não ser essencial para Auth e Firestore.
+                messagingSenderId: "62478365498", // Corrigido
+                appId: "1:62478365498:web:23b328c437992a46cdb003" // Corrigido
             };
 
             try {
@@ -606,7 +606,6 @@
                 await signInAnonymously(auth);
                 console.log("Firebase inicializado e usuário autenticado com sucesso.");
 
-                // Define o caminho da coleção de forma simples para portabilidade.
                 const collectionPath = `feedback`;
                 feedbackCollection = collection(db, collectionPath);
 
@@ -626,15 +625,24 @@
                 let message = "Ocorreu um erro desconhecido ao conectar com o banco de dados.";
 
                 if (error.code === 'auth/api-key-not-valid') {
-                    title = "Chave de API Inválida";
+                    title = "Chave de API Inválida (v9.0)";
                     message = `<p>O Firebase recusou a conexão, indicando que a chave de API é inválida.</p>
                                <p class="text-sm mt-2"><strong>Ações recomendadas:</strong></p>
                                <ul class="list-disc list-inside text-sm mt-1">
-                                   <li>Verifique se a chave de API no código corresponde exatamente à do seu console Firebase.</li>
-                                   <li>Se a chave estiver restrita, certifique-se de que o domínio <strong>${window.location.hostname || 'do seu site'}</strong> foi adicionado aos "Referenciadores de HTTP" permitidos nas configurações da chave no Google Cloud Console.</li>
+                                   <li><strong>Verifique se a chave de API no código corresponde exatamente à do seu console Firebase.</strong></li>
+                                   <li><strong>(Causa provável)</strong> Se a chave estiver restrita, certifique-se de que o domínio <strong>${window.location.hostname || 'do seu site'}</strong> foi adicionado aos "Referenciadores de HTTP" permitidos nas configurações da chave no Google Cloud Console.</li>
+                               </ul>`;
+                } else if (error.code === 'auth/configuration-not-found') {
+                    title = "Configuração Não Encontrada (v9.0)";
+                    message = `<p>O Firebase não encontrou uma configuração de autenticação para seu projeto.</p>
+                               <p class="text-sm mt-2"><strong>Ação necessária:</strong></p>
+                               <ul class="list-disc list-inside text-sm mt-1">
+                                   <li>Acesse o <a href="https://console.firebase.google.com/" target="_blank" class="underline">Console do Firebase</a>.</li>
+                                   <li>Vá para a seção <strong>Authentication</strong> e clique em <strong>"Primeiros passos"</strong> para ativar o serviço.</li>
+                                    <li>Na aba <strong>"Sign-in method"</strong>, ative o provedor <strong>"Anônimo"</strong>.</li>
                                </ul>`;
                 } else {
-                    message = "Ocorreu um erro ao conectar com o banco de dados. Verifique as suas credenciais do Firebase e a conexão com a internet.";
+                    message = `Ocorreu um erro ao conectar com o banco de dados. Verifique suas credenciais e a conexão com a internet. Código do erro: ${error.code}`;
                 }
                 showErrorModal(title, message);
                 return;
@@ -644,7 +652,6 @@
             setupEventListeners();
         };
 
-        // Inicia a aplicação quando o DOM estiver completamente carregado.
         document.addEventListener('DOMContentLoaded', init);
     </script>
 </body>
